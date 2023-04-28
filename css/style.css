@@ -1038,7 +1038,7 @@ h6 {
     top: 24px;
     right: 58px;
     color: #006a94 !important;
-    font-size:1.4rem;
+    font-size:1.3rem !important;
     z-index: 5 !important;
   }
 
