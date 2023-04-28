@@ -1,4 +1,4 @@
-@import url(https://fonts.googleapis.com/css?family=Manrope:200,300,regular,500,600,700,800);
+ @import url(https://fonts.googleapis.com/css?family=Manrope:200,300,regular,500,600,700,800);
 
 @charset "UTF-8";
 
@@ -998,13 +998,11 @@ h6 {
 
   .change-lang {
     position: absolute;
-    top: 27px;
+    top: 10px;
     right: 58px;
+    right: calc(50% - 1.875rem) 50%;
     color: #006a94 !important;
     z-index: 5 !important;
-    padding: 0;
-    font-size: 1.4rem !important;
-    
   }
 
   .header__container {
