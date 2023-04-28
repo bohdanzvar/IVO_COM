@@ -1000,7 +1000,6 @@ h6 {
     position: absolute;
     top: 15px;
     right: 58px;
-    right: calc(50% - 1.875rem) 50%;
     color: #006a94 !important;
     z-index: 5 !important;
     
