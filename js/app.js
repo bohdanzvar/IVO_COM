@@ -1,6 +1,6 @@
 (() => {
     "use strict";
-    const modules_flsModules = {};
+    const flsModules = {};
     function isWebp() {
         function testWebP(callback) {
             let webP = new Image;
@@ -216,7 +216,7 @@
         bodyUnlock();
         document.documentElement.classList.remove("menu-open");
     }
-    function functions_FLS(message) {
+    function FLS(message) {
         setTimeout((() => {
             if (window.FLS) console.log(message);
         }), 0);
@@ -264,7 +264,7 @@
             }
         }
     }
-    let gotoblock_gotoBlock = (targetBlock, noHeader = false, speed = 500, offsetTop = 0) => {
+    let gotoBlock = (targetBlock, noHeader = false, speed = 500, offsetTop = 0) => {
         const targetBlockElement = document.querySelector(targetBlock);
         if (targetBlockElement) {
             let headerItem = "";
@@ -299,9 +299,140 @@
                     behavior: "smooth"
                 });
             }
-            functions_FLS(`[gotoBlock]: Юхуу...едем к ${targetBlock}`);
-        } else functions_FLS(`[gotoBlock]: Ой ой..Такого блока нет на странице: ${targetBlock}`);
+            FLS(`[gotoBlock]: Юхуу...едем к ${targetBlock}`);
+        } else FLS(`[gotoBlock]: Ой ой..Такого блока нет на странице: ${targetBlock}`);
     };
+    let formValidate = {
+        getErrors(form) {
+            let error = 0;
+            let formRequiredItems = form.querySelectorAll("*[data-required]");
+            if (formRequiredItems.length) formRequiredItems.forEach((formRequiredItem => {
+                if ((formRequiredItem.offsetParent !== null || formRequiredItem.tagName === "SELECT") && !formRequiredItem.disabled) error += this.validateInput(formRequiredItem);
+            }));
+            return error;
+        },
+        validateInput(formRequiredItem) {
+            let error = 0;
+            if (formRequiredItem.dataset.required === "email") {
+                formRequiredItem.value = formRequiredItem.value.replace(" ", "");
+                if (this.emailTest(formRequiredItem)) {
+                    this.addError(formRequiredItem);
+                    error++;
+                } else this.removeError(formRequiredItem);
+            } else if (formRequiredItem.type === "checkbox" && !formRequiredItem.checked) {
+                this.addError(formRequiredItem);
+                error++;
+            } else if (!formRequiredItem.value.trim()) {
+                this.addError(formRequiredItem);
+                error++;
+            } else this.removeError(formRequiredItem);
+            return error;
+        },
+        addError(formRequiredItem) {
+            formRequiredItem.classList.add("_form-error");
+            formRequiredItem.parentElement.classList.add("_form-error");
+            let inputError = formRequiredItem.parentElement.querySelector(".form__error");
+            if (inputError) formRequiredItem.parentElement.removeChild(inputError);
+            if (formRequiredItem.dataset.error) formRequiredItem.parentElement.insertAdjacentHTML("beforeend", `<div class="form__error">${formRequiredItem.dataset.error}</div>`);
+        },
+        removeError(formRequiredItem) {
+            formRequiredItem.classList.remove("_form-error");
+            formRequiredItem.parentElement.classList.remove("_form-error");
+            if (formRequiredItem.parentElement.querySelector(".form__error")) formRequiredItem.parentElement.removeChild(formRequiredItem.parentElement.querySelector(".form__error"));
+        },
+        formClean(form) {
+            form.reset();
+            setTimeout((() => {
+                let inputs = form.querySelectorAll("input,textarea");
+                for (let index = 0; index < inputs.length; index++) {
+                    const el = inputs[index];
+                    el.parentElement.classList.remove("_form-focus");
+                    el.classList.remove("_form-focus");
+                    formValidate.removeError(el);
+                }
+                let checkboxes = form.querySelectorAll(".checkbox__input");
+                if (checkboxes.length > 0) for (let index = 0; index < checkboxes.length; index++) {
+                    const checkbox = checkboxes[index];
+                    checkbox.checked = false;
+                }
+                if (flsModules.select) {
+                    let selects = form.querySelectorAll(".select");
+                    if (selects.length) for (let index = 0; index < selects.length; index++) {
+                        const select = selects[index].querySelector("select");
+                        flsModules.select.selectBuild(select);
+                    }
+                }
+            }), 0);
+        },
+        emailTest(formRequiredItem) {
+            return !/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,8})+$/.test(formRequiredItem.value);
+        }
+    };
+    function formSubmit() {
+        const forms = document.forms;
+        if (forms.length) for (const form of forms) {
+            form.addEventListener("submit", (function(e) {
+                const form = e.target;
+                formSubmitAction(form, e);
+            }));
+            form.addEventListener("reset", (function(e) {
+                const form = e.target;
+                formValidate.formClean(form);
+            }));
+        }
+        async function formSubmitAction(form, e) {
+            const error = !form.hasAttribute("data-no-validate") ? formValidate.getErrors(form) : 0;
+            if (error === 0) {
+                const ajax = form.hasAttribute("data-ajax");
+                if (ajax) {
+                    e.preventDefault();
+                    const formAction = form.getAttribute("action") ? form.getAttribute("action").trim() : "#";
+                    const formMethod = form.getAttribute("method") ? form.getAttribute("method").trim() : "GET";
+                    const formData = new FormData(form);
+                    form.classList.add("_sending");
+                    const response = await fetch(formAction, {
+                        method: formMethod,
+                        body: formData
+                    });
+                    if (response.ok) {
+                        let responseResult = await response.json();
+                        form.classList.remove("_sending");
+                        formSent(form, responseResult);
+                    } else {
+                        alert("Ошибка");
+                        form.classList.remove("_sending");
+                    }
+                } else if (form.hasAttribute("data-dev")) {
+                    e.preventDefault();
+                    formSent(form);
+                }
+            } else {
+                e.preventDefault();
+                if (form.querySelector("._form-error") && form.hasAttribute("data-goto-error")) {
+                    const formGoToErrorClass = form.dataset.gotoError ? form.dataset.gotoError : "._form-error";
+                    gotoBlock(formGoToErrorClass, true, 1e3);
+                }
+            }
+        }
+        function formSent(form, responseResult = ``) {
+            document.dispatchEvent(new CustomEvent("formSent", {
+                detail: {
+                    form
+                }
+            }));
+            setTimeout((() => {
+                if (flsModules.popup) {
+                    const popup = form.dataset.popupMessage;
+                    popup ? flsModules.popup.open(popup) : null;
+                }
+            }), 0);
+            formValidate.formClean(form);
+            formLogging(`Форма отправлена!`);
+        }
+        function formLogging(message) {
+            FLS(`[Формы]: ${message}`);
+        }
+    }
     let addWindowScrollEvent = false;
     function pageNavigation() {
         document.addEventListener("click", pageNavigationAction);
@@ -315,11 +446,11 @@
                     const noHeader = gotoLink.hasAttribute("data-goto-header") ? true : false;
                     const gotoSpeed = gotoLink.dataset.gotoSpeed ? gotoLink.dataset.gotoSpeed : 500;
                     const offsetTop = gotoLink.dataset.gotoTop ? parseInt(gotoLink.dataset.gotoTop) : 0;
-                    if (modules_flsModules.fullpage) {
+                    if (flsModules.fullpage) {
                         const fullpageSectionId = +document.querySelector(`${gotoLinkSelector}`).closest("[data-fp-section]").dataset.fpId;
-                        fullpageSectionId ? modules_flsModules.fullpage.switchingSection(fullpageSectionId) : null;
+                        fullpageSectionId ? flsModules.fullpage.switchingSection(fullpageSectionId) : null;
                         document.documentElement.classList.contains("menu-open") ? menuClose() : null;
-                    } else gotoblock_gotoBlock(gotoLinkSelector, noHeader, gotoSpeed, offsetTop);
+                    } else gotoBlock(gotoLinkSelector, noHeader, gotoSpeed, offsetTop);
                     e.preventDefault();
                 }
             } else if (e.type === "watcherCallback" && e.detail) {
@@ -342,7 +473,7 @@
         if (getHash()) {
             let goToHash;
             if (document.querySelector(`#${getHash()}`)) goToHash = `#${getHash()}`; else if (document.querySelector(`.${getHash()}`)) goToHash = `.${getHash()}`;
-            goToHash ? gotoblock_gotoBlock(goToHash, true, 500, 20) : null;
+            goToHash ? gotoBlock(goToHash, true, 500, 20) : null;
         }
     }
     function headerScroll() {
@@ -379,10 +510,204 @@
             }));
         }
     }), 0);
+    const langArr = {
+        unit: {
+            ru: "создаем многоязычный сайт",
+            en: "Main",
+            ua: "Головна"
+        },
+        "unit-2": {
+            ru: "графический чип",
+            en: "About Us",
+            ua: "Про нас"
+        },
+        "unit-3": {
+            ru: "объем памяти",
+            en: "Advantages",
+            ua: "Переваги"
+        },
+        "unit-4": {
+            ru: "тип памяти",
+            en: " Our Products",
+            ua: "Продукція"
+        },
+        "unit-5": {
+            ru: "тип системы охлаждения",
+            en: "Partners",
+            ua: "Партнери"
+        },
+        "unit-6": {
+            ru: "тип системы охлаждения",
+            en: "Contacts",
+            ua: "Контакти"
+        },
+        title: {
+            ru: "детально о товаре",
+            en: "IVO-KOM",
+            ua: "IVO-KOM"
+        },
+        slogan: {
+            ru: "детально о товаре",
+            en: "Our competence - polymers,",
+            ua: "Наша Комп - полімери,"
+        },
+        "slogan-2": {
+            ru: "детально о товаре",
+            en: "Success - is our common goal!",
+            ua: "Успіх- наша спільна ціль!"
+        },
+        "at-title": {
+            ru: "детально о товаре",
+            en: "About Us",
+            ua: "Про компанію"
+        },
+        "at-text": {
+            ru: "детально о товаре",
+            en: "Over the years of its activity, the IVO-COM company managed to gather considerable experience and recognition in the market of plastic raw materials. Thanks to strategic partnerships with world leaders in the production of plastics, we provide high quality and a wide range of products to our customers. Our company is constantly working to meet the needs of manufacturers and consumers of plastic products. Also, the company is successfully expanding its boundaries and attracting new partners in many industries. The company was founded in 1997, and since then it has made a significant contribution to the development of the market of plastic raw materials",
+            ua: "За роки своєї діяльності, компанія IVO-COM зуміла зібрати значний досвід та визнання на ринку пластикової сировини. Завдяки стратегічному партнерству зі світовими лідерами у виробництві пластмас, ми забезпечуємо високу якість та широкий асортимент продукції нашим клієнтам. Наша компанія постійно працює над тим, щоб задовольнити потреби виробників та споживачів пластмасової продукції. Також, компанія успішно розширює свої межі та залучає нових партнерів у багатьох галузях промисловості. Компанія була заснована в 1997 році, і з тих пір вона зробила вагомий внесок у розвиток ринку пластикової сировини"
+        },
+        "at-button": {
+            ru: "детально о товаре",
+            en: "Contact us",
+            ua: "Зв'язатись"
+        },
+        "ad-title": {
+            ru: "детально о товаре",
+            en: "Advanteges",
+            ua: "НАШІ ПЕРЕВАГИ"
+        },
+        "ad-item-title-1": {
+            ru: "детально о товаре",
+            en: "More than 20 years on market",
+            ua: "Більше 20 років на ринку"
+        },
+        "ad-item-title-2": {
+            ru: "детально о товаре",
+            en: "Performance analysis",
+            ua: "Аналіз ефективності"
+        },
+        "ad-item-title-3": {
+            ru: "детально о товаре",
+            en: "Individual logistic support",
+            ua: "Індивідуальна логістична підтримка"
+        },
+        "ad-item-text-1": {
+            ru: "детально о товаре",
+            en: "The company has direct contracts with major global manufacturers in the USA, Europe and Southeast Asia",
+            ua: "Компанія має прямі контракти з великими світовими виробниками в США, Європі та Південно-Східної Азії "
+        },
+        "ad-item-text-2": {
+            ru: "детально о товаре",
+            en: "We guarantee that thanks to our highly qualified staff and flexible sales policy, we will be able to establish the optimal financing regime that will meet your needs and ensure optimal cash flow.",
+            ua: "Ми гарантуємо, що завдяки нашому висококваліфікованому персоналу та гнучкій політиці продажу, ми зможемо налагодити оптимальний режим фінансування, що відповідатиме Вашим потребам та забезпечить оптимальний грошовий потік."
+        },
+        "ad-item-text-3": {
+            ru: "детально о товаре",
+            en: "We provide a wide range of services for the delivery of goods, including delivery to the port, warehouse or directly to your production with the help of our logistics fleet and cooperation with partners.",
+            ua: "Ми забезпечуємо широкий спектр послуг з доставки товарів, включаючи доставку до порту, складу або прямо на Ваше виробництво за допомогою нашого логістичного флоту та співпраці з партнерами."
+        },
+        "pr-title": {
+            ru: "детально о товаре",
+            en: "Our products",
+            ua: "Наша продукція"
+        },
+        "pr-title-2": {
+            ru: "детально о товаре",
+            en: "Polypropylene",
+            ua: "ПОЛІПРОПІЛЕН"
+        },
+        "pr-title-3": {
+            ru: "детально о товаре",
+            en: "Polypropylene",
+            ua: "ПОЛІЕТИЛЕН"
+        },
+        "pr-item-1": {
+            ru: "детально о товаре",
+            en: "Homopolymer",
+            ua: "Гомополімер"
+        },
+        "pr-item-2": {
+            ru: "детально о товаре",
+            en: "Copolymer",
+            ua: "Сополімер"
+        },
+        "pr-item-3": {
+            ru: "детально о товаре",
+            en: "Random Polymer",
+            ua: "Рандомполімер"
+        },
+        "ct-title": {
+            ru: "детально о товаре",
+            en: "Contacts",
+            ua: "Контакти"
+        },
+        "ct-subtitle-1": {
+            ru: "детально о товаре",
+            en: "Our location:",
+            ua: "Місце знаходження:"
+        },
+        "ct-subtitle-2": {
+            ru: "детально о товаре",
+            en: "Phone number:",
+            ua: "Номер телефону:"
+        },
+        "ct-subtitle-3": {
+            ru: "детально о товаре",
+            en: "Email:",
+            ua: "Пошта:"
+        },
+        "ct-text-1": {
+            ru: "детально о товаре",
+            en: "more details",
+            ua: "детально про товар"
+        },
+        "ct-text-2": {
+            ru: "детально о товаре",
+            en: "more details",
+            ua: "детально про товар"
+        },
+        "ct-text-3": {
+            ru: "детально о товаре",
+            en: "more details",
+            ua: "детально про товар"
+        },
+        "geo-title": {
+            ru: "детально о товаре",
+            en: "Geolocation",
+            ua: "Геолокація"
+        }
+    };
+    const maxImg = document.querySelector(".right-panel img");
+    const script_select = document.querySelector("select");
+    const allLang = [ "en", "ru", "ua" ];
+    document.querySelectorAll(".left-panel img").forEach((item => item.onmouseenter = event => maxImg.src = event.target.src));
+    script_select.addEventListener("change", changeURLLanguage);
+    function changeURLLanguage() {
+        let lang = script_select.value;
+        location.href = window.location.pathname + "#" + lang;
+        location.reload();
+    }
+    function changeLanguage() {
+        let hash = window.location.hash;
+        hash = hash.substr(1);
+        console.log(hash);
+        if (!allLang.includes(hash)) {
+            location.href = window.location.pathname + "#en";
+            location.reload();
+        }
+        script_select.value = hash;
+        document.querySelector("title").innerHTML = langArr["unit"][hash];
+        for (let key in langArr) {
+            let elem = document.querySelector(".lng-" + key);
+            if (elem) elem.innerHTML = langArr[key][hash];
+        }
+    }
+    changeLanguage();
     window["FLS"] = true;
     isWebp();
     menuInit();
     spollers();
+    formSubmit();
     pageNavigation();
     headerScroll();
 })();
