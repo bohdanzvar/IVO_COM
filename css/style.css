@@ -998,10 +998,12 @@ h6 {
 
   .change-lang {
     position: absolute;
-    top: 15px;
+    top: 13px;
     right: 58px;
     color: #006a94 !important;
     z-index: 5 !important;
+    padding: 0;
+    font-size: 18px;
     
   }
 
